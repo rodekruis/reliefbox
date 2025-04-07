@@ -7,8 +7,8 @@ build:
     python: "3.11"
     
 sphinx:
-  configuration: docs/source/conf.py
+  configuration: POC/docs/source/conf.py
 
 python:
   install:
-    - requirements: docs/source/requirements.txt
+    - requirements: POC/docs/source/requirements.txt
