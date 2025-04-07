@@ -52,18 +52,21 @@ The client can delete data at any time.
 ------------------------------------------------------------------------
 
 **Confidentiality** is maintained by:
-- Limiting access to a controlled set of administrators.
+
+  - Limiting access to a controlled set of administrators.
 
 **Availability** is ensured by:
-- Utilizing an optimized configuration in Microsoft Azure.
-- Setting up automated backups, health checks, and exception reporting.
-- Testing new code thoroughly with both automated and manual tests.
+
+  - Utilizing an optimized configuration in Microsoft Azure.
+  - Setting up automated backups, health checks, and exception reporting.
+  - Testing new code thoroughly with both automated and manual tests.
 
 **Integrity** is maintained by:
-- Implementing extensive automated and manual testing.
-- Enforcing database integrity through primary/foreign key relationships, unique constraints, and non-null columns.
-- Monitoring logs and performing regular penetration tests by an external company.
-- Ensuring all involved parties adhere to the IFRC Code of Conduct.
+
+  - Implementing extensive automated and manual testing.
+  - Enforcing database integrity through primary/foreign key relationships, unique constraints, and non-null columns.
+  - Monitoring logs and performing regular penetration tests by an external company.
+  - Ensuring all involved parties adhere to the IFRC Code of Conduct.
 
 
 8. Who processes the data?
@@ -72,43 +75,43 @@ The client can delete data at any time.
 NLRC is the main data processor under the GDPR, maintaining Reliefbox.
 
 Additional third-party processors include:
-- **Microsoft Azure Legal Information:**  
-  https://azure.microsoft.com/en-us/support/legal/
+  - **Microsoft Azure Legal Information:**  
+    https://azure.microsoft.com/en-us/support/legal/
 
 9. What are my responsibilities as a Reliefbox user?
 ------------------------------------------------
 
 Users are responsible for:
-- Adhering to all applicable legislation.
-- Keeping account credentials confidential.
-- Ensuring that personnel are adequately trained in data protection.
-- Evaluating the need for a Data Protection Impact Assessment (DPIA) based on their use case.
-- Establishing a data retention policy that reflects the sensitivity of the data.
-- Providing clear information to data subjects regarding data processing and their rights.
-- Enabling data subjects to exercise their rights (access, rectification, erasure, objection, etc.).
-- Maintaining a data breach protocol.
+  - Adhering to all applicable legislation.
+  - Keeping account credentials confidential.
+  - Ensuring that personnel are adequately trained in data protection.
+  - Evaluating the need for a Data Protection Impact Assessment (DPIA) based on their use case.
+  - Establishing a data retention policy that reflects the sensitivity of the data.
+  - Providing clear information to data subjects regarding data processing and their rights.
+  - Enabling data subjects to exercise their rights (access, rectification, erasure, objection, etc.).
+  - Maintaining a data breach protocol.
 
 
 10. What are some additional privacy best practices for end-users?
 --------------------------------------------------------------------
 
 **Recommended reading for Red Cross/Red Crescent movement users:**
-- IFRC Practical Guidance for Data Protection in Cash and Voucher Assistance
-- IFRC Data Protection Overview and General Best Practices
+  - IFRC Practical Guidance for Data Protection in Cash and Voucher Assistance
+  - IFRC Data Protection Overview and General Best Practices
 
 **Recommended reading for all organizations:**
-- General Data Protection Regulation (GDPR)
-- Module 3 (Data and Digital Responsibility) of the Data and Digital Literacy Introduction Course
+  - General Data Protection Regulation (GDPR)
+  - Module 3 (Data and Digital Responsibility) of the Data and Digital Literacy Introduction Course
 
 **Additional recommendations:**
-- Only collect necessary data.
-- Do not retain data longer than necessary.
-- Conduct monthly or bi-monthly access reviews.
-- Handle exported Excel files responsibly by deleting them securely after use.
-- Protect Excel workbooks with a password:
-  - Select **File > Info**.
-  - Choose **Protect Workbook** and select **Encrypt with Password**.
-  - Enter and confirm a robust password.
-  - Update any default passwords with strong, unique passphrases.
-- Follow data protection training.
-- Use a digital password manager (e.g., Bitwarden).
+  - Only collect necessary data.
+  - Do not retain data longer than necessary.
+  - Conduct monthly or bi-monthly access reviews.
+  - Handle exported Excel files responsibly by deleting them securely after use.
+  - Protect Excel workbooks with a password:
+    - Select **File > Info**.
+    - Choose **Protect Workbook** and select **Encrypt with Password**.
+    - Enter and confirm a robust password.
+    - Update any default passwords with strong, unique passphrases.
+  - Follow data protection training.
+  - Use a digital password manager (e.g., Bitwarden).
