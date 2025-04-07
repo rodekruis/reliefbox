@@ -26,3 +26,4 @@ Contents
 
    usage
    installation
+   privacy
