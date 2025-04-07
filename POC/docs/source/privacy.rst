@@ -5,7 +5,7 @@ Data Protection, Privacy and Compliance
 1. How is the data protected? What is the data protection policy?
 -------------------------------------------------------------------
 
-510, the digital and data unit, is part of The Netherlands Red Cross (NLRC). The NLRC has a **Data Protection Policy** enforced since 2018. **Both the NLRC and the Reliefbox adhere to the European General Data Protection Regulation (GDPR)**. The GDPR also specifies data breach reporting, which must be reported to the Dutch Autoriteit Persoonsgegevens.
+510, the digital and data unit, is part of The Netherlands Red Cross (NLRC). The NLRC has a **Data Protection Policy** enforced since 2018. **Both the NLRC and Reliefbox adhere to the European General Data Protection Regulation (GDPR)**. The GDPR also specifies data breach reporting, which must be reported to the Dutch Autoriteit Persoonsgegevens.
 
 NLRC employs a legal officer specialized in data protection. NLRC is a data processor for the client, as stated in the Service Level Agreement (SLA). For more information about data processors, visit:  
 https://www.gdpreu.org/the-regulation/key-concepts/data-controllers-and-processors/
