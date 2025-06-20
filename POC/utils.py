@@ -185,3 +185,39 @@ def pandas_to_html(df, replace_values={}, replace_columns={}, titlecase=False):
         rows.append(row_dict)
     print(columns, rows)
     return columns, rows
+
+
+def save_single_beneficiary(beneficiary_data, distrib_id, user_email):
+    """Save a single beneficiary record to the database."""
+    # Create the body for the beneficiary record
+    body = {
+        "id": str(distrib_id) + str(beneficiary_data["code"]),
+        "partitionKey": user_email,
+        "distrib_id": str(distrib_id),
+    }
+
+    # Add all other fields from the beneficiary data
+    for key in beneficiary_data.keys():
+        if key not in ["id", "partitionKey", "distrib_id"]:
+            body[key] = str(beneficiary_data[key]) if beneficiary_data[key] is not None else ""
+
+    if os.getenv("MODE") == "online":
+        cosmos_container = cosmos_db.get_container_client("Beneficiaries")
+        # Save to cosmos db
+        cosmos_container.create_item(body=body)
+    elif os.getenv("MODE") == "offline":
+        database = get_local_data_path(user_email, distrib_id)
+        # Load existing data or create new DataFrame
+        if os.path.exists(database):
+            existing_df = pd.read_csv(database, sep=";", dtype={"id": str}).set_index("id")
+            # Add new record
+            for key, value in body.items():
+                existing_df.at[body["id"], key] = value
+        else:
+            # Create new DataFrame with the single record
+            existing_df = pd.DataFrame([body]).set_index("id")
+
+        # Save to CSV
+        existing_df.to_csv(database, sep=";")
+
+    return body["id"]

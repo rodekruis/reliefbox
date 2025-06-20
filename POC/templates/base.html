@@ -9,6 +9,12 @@
   <title>ReliefBox</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
   <style>
+    :root {
+      --primary-color: #F53335; /* Default color - you can change this value to any color you want */
+    }
+    .is-custom-primary {
+      background-color: var(--primary-color) !important;
+    }
     #noteligible {
         background-color: #F53335 !important;
     }
@@ -32,7 +38,7 @@
 </head>
 
 <body onload="checkCookiesStats()">
-<section class="hero is-primary is-fullheight">
+<section class="hero is-custom-primary is-fullheight"></section>
 
   <nav class="navbar" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">

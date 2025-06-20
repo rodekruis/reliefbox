@@ -14,6 +14,7 @@ from utils import (
     get_beneficiary_entry,
     get_beneficiary_data,
     save_beneficiary_data,
+    save_single_beneficiary,
     delete_beneficiary_data,
     pandas_to_html,
     update_beneficiary_entry,
@@ -277,3 +278,64 @@ def index():
 @main.route("/profile")
 def profile():
     return render_template("profile.html", name=current_user.name)
+
+
+@main.route("/add_beneficiary", methods=["POST"])
+@login_required
+def add_beneficiary():
+    """Add a single beneficiary record via JSON POST request."""
+    try:
+        # Check if distribution is selected
+        if "distrib_id" not in session:
+            return jsonify({"error": "No distribution selected"}), 400
+
+        # Get JSON data from request
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        # Validate required fields
+        if "code" not in data:
+            return jsonify({"error": "Field 'code' is required"}), 400
+
+        # Check if beneficiary with this code already exists
+        beneficiary_id = str(session["distrib_id"]) + str(data["code"])
+        existing_beneficiary = get_beneficiary_entry(
+            beneficiary_id=beneficiary_id,
+            user_email=current_user.email,
+            distrib_id=session["distrib_id"],
+        )
+
+        if existing_beneficiary not in ["not_found", "no_data"]:
+            return (
+                jsonify(
+                    {"error": f"Beneficiary with code '{data['code']}' already exists"}
+                ),
+                409,
+            )
+
+        # Set default values for required fields
+        data.setdefault("recipient", "No")
+        data.setdefault("received_when", None)
+
+        # Save the new beneficiary using the single beneficiary function
+        saved_id = save_single_beneficiary(
+            beneficiary_data=data,
+            distrib_id=session["distrib_id"], 
+            user_email=current_user.email
+        )
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": f"Beneficiary with code '{data['code']}' added successfully",
+                    "beneficiary_id": saved_id,
+                }
+            ),
+            201,
+        )
+
+    except Exception as e:
+        logging.exception(e)
+        return jsonify({"error": "Internal server error"}), 500
