@@ -305,31 +305,39 @@ def profile():
 @main.route("/add_beneficiary", methods=["POST"])
 @login_required
 def add_beneficiary():
-    """Add a single beneficiary record via JSON POST request."""
+    """Add a single beneficiary record via JSON POST request with detailed logging."""
     try:
+        logging.info("Received request to add beneficiary")
         # Get JSON data from request
         data = request.get_json()
+        logging.debug(f"Request JSON data: {data}")
         if not data:
+            logging.warning("No JSON data provided in request")
             return jsonify({"error": "No JSON data provided"}), 400
 
         # Validate required fields
         if "code" not in data:
+            logging.warning("Missing required field: code")
             return jsonify({"error": "Field 'code' is required"}), 400
         
         if "distrib_id" not in data:
+            logging.warning("Missing required field: distrib_id")
             return jsonify({"error": "Field 'distrib_id' is required"}), 400
 
         # Verify user has access to this distribution
         from app import Distribution
+        logging.info(f"Checking access for user {current_user.email} to distribution {data['distrib_id']}")
         distribution = Distribution.query.filter_by(
             id=data["distrib_id"], user_email=current_user.email
         ).first()
         
         if not distribution:
+            logging.warning(f"Distribution {data['distrib_id']} not found or access denied for user {current_user.email}")
             return jsonify({"error": "Distribution not found or access denied"}), 404
 
         # Check if beneficiary with this code already exists
         beneficiary_id = str(data["distrib_id"]) + str(data["code"])
+        logging.info(f"Checking if beneficiary with id {beneficiary_id} already exists")
         existing_beneficiary = get_beneficiary_entry(
             beneficiary_id=beneficiary_id,
             user_email=current_user.email,
@@ -337,6 +345,7 @@ def add_beneficiary():
         )
 
         if existing_beneficiary not in ["not_found", "no_data"]:
+            logging.warning(f"Beneficiary with code '{data['code']}' already exists in distribution {data['distrib_id']}")
             return (
                 jsonify(
                     {"error": f"Beneficiary with code '{data['code']}' already exists"}
@@ -347,13 +356,16 @@ def add_beneficiary():
         # Set default values for required fields
         data.setdefault("recipient", "No")
         data.setdefault("received_when", None)
+        logging.debug(f"Beneficiary data to save: {data}")
 
         # Save the new beneficiary using the single beneficiary function
+        logging.info(f"Saving new beneficiary for distribution {data['distrib_id']}")
         saved_id = save_single_beneficiary(
             beneficiary_data=data,
             distrib_id=data["distrib_id"], 
             user_email=current_user.email
         )
+        logging.info(f"Beneficiary saved with id {saved_id}")
 
         return (
             jsonify(
@@ -368,7 +380,7 @@ def add_beneficiary():
         )
 
     except Exception as e:
-        logging.exception(e)
+        logging.exception("Exception occurred while adding beneficiary")
         return jsonify({"error": "Internal server error"}), 500
 
 # Distribution-specific routes with distrib_id in URL
