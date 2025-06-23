@@ -188,36 +188,87 @@ def pandas_to_html(df, replace_values={}, replace_columns={}, titlecase=False):
 
 
 def save_single_beneficiary(beneficiary_data, distrib_id, user_email):
-    """Save a single beneficiary record to the database."""
-    # Create the body for the beneficiary record
-    body = {
-        "id": str(distrib_id) + str(beneficiary_data["code"]),
-        "partitionKey": user_email,
-        "distrib_id": str(distrib_id),
-    }
+    """Save a single beneficiary record to the database with comprehensive error handling."""
+    try:
+        # Validate input parameters
+        if not beneficiary_data:
+            raise ValueError("beneficiary_data cannot be empty")
+        if not distrib_id:
+            raise ValueError("distrib_id cannot be empty")
+        if not user_email:
+            raise ValueError("user_email cannot be empty")
+        if "code" not in beneficiary_data:
+            raise ValueError("beneficiary_data must contain 'code' field")
 
-    # Add all other fields from the beneficiary data
-    for key in beneficiary_data.keys():
-        if key not in ["id", "partitionKey", "distrib_id"]:
-            body[key] = str(beneficiary_data[key]) if beneficiary_data[key] is not None else ""
+        # Create the body for the beneficiary record
+        body = {
+            "id": str(distrib_id) + str(beneficiary_data["code"]),
+            "partitionKey": user_email,
+            "distrib_id": str(distrib_id),
+        }
 
-    if os.getenv("MODE") == "online":
-        cosmos_container = cosmos_db.get_container_client("Beneficiaries")
-        # Save to cosmos db
-        cosmos_container.create_item(body=body)
-    elif os.getenv("MODE") == "offline":
-        database = get_local_data_path(user_email, distrib_id)
-        # Load existing data or create new DataFrame
-        if os.path.exists(database):
-            existing_df = pd.read_csv(database, sep=";", dtype={"id": str}).set_index("id")
-            # Add new record
-            for key, value in body.items():
-                existing_df.at[body["id"], key] = value
+        # Add all other fields from the beneficiary data
+        for key in beneficiary_data.keys():
+            if key not in ["id", "partitionKey", "distrib_id"]:
+                body[key] = str(beneficiary_data[key]) if beneficiary_data[key] is not None else ""
+
+        # Determine storage mode
+        mode = os.getenv("MODE", "offline")
+        
+        if mode == "online":
+            try:
+                cosmos_container = cosmos_db.get_container_client("Beneficiaries")
+                # Save to cosmos db
+                result = cosmos_container.create_item(body=body)
+                if not result:
+                    raise Exception("Failed to create item in Cosmos DB - no result returned")
+            except Exception as e:
+                raise Exception(f"Failed to save to Cosmos DB: {str(e)}")
+                
+        elif mode == "offline":
+            try:
+                database = get_local_data_path(user_email, distrib_id)
+                
+                # Ensure the directory exists
+                os.makedirs(os.path.dirname(database), exist_ok=True)
+                
+                # Load existing data or create new DataFrame
+                if os.path.exists(database):
+                    try:
+                        existing_df = pd.read_csv(database, sep=";", dtype={"id": str}).set_index("id")
+                        # Check if beneficiary already exists
+                        if body["id"] in existing_df.index:
+                            raise ValueError(f"Beneficiary with ID {body['id']} already exists")
+                        # Add new record
+                        for key, value in body.items():
+                            existing_df.at[body["id"], key] = value
+                    except pd.errors.EmptyDataError:
+                        # File exists but is empty, create new DataFrame
+                        existing_df = pd.DataFrame([body]).set_index("id")
+                    except Exception as e:
+                        raise Exception(f"Failed to read existing data file: {str(e)}")
+                else:
+                    # Create new DataFrame with the single record
+                    existing_df = pd.DataFrame([body]).set_index("id")
+
+                # Save to CSV
+                try:
+                    existing_df.to_csv(database, sep=";")
+                    # Verify the file was written
+                    if not os.path.exists(database):
+                        raise Exception("File was not created successfully")
+                except Exception as e:
+                    raise Exception(f"Failed to write to CSV file: {str(e)}")
+                    
+            except Exception as e:
+                raise Exception(f"Failed to save to local database: {str(e)}")
         else:
-            # Create new DataFrame with the single record
-            existing_df = pd.DataFrame([body]).set_index("id")
+            raise ValueError(f"Invalid MODE setting: {mode}. Must be 'online' or 'offline'")
 
-        # Save to CSV
-        existing_df.to_csv(database, sep=";")
-
-    return body["id"]
+        return body["id"]
+        
+    except Exception as e:
+        # Log the error and re-raise with more context
+        import logging
+        logging.error(f"Error in save_single_beneficiary: {str(e)}")
+        raise Exception(f"Failed to save beneficiary: {str(e)}")

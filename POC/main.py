@@ -25,9 +25,66 @@ import os
 import pandas as pd
 from datetime import datetime
 import logging
+import base64
+from functools import wraps
 
 cosmos_db = get_cosmos_db()
 main = Blueprint("main", __name__)
+
+
+def basic_auth_required(f):
+    """Decorator that supports both Flask-Login and HTTP Basic Authentication."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Check if user is already logged in via Flask-Login
+        if current_user.is_authenticated:
+            return f(*args, **kwargs)
+        
+        # Try Basic Authentication
+        auth = request.authorization
+        if auth:
+            # Import here to avoid circular imports
+            from app import User
+            
+            try:
+                # Find user by email (username in basic auth)
+                user = User.query.filter_by(email=auth.username).first()
+                
+                if user and user.password.strip() == auth.password:
+                    logging.info(f"Basic auth successful for user: {auth.username}")
+                    # For API endpoints, we'll store user info in g for the request
+                    from flask import g
+                    g.current_user = user
+                    return f(*args, **kwargs)
+                else:
+                    logging.warning(f"Basic auth failed for user: {auth.username}")
+            except Exception as e:
+                logging.error(f"Error during basic authentication: {str(e)}")
+        
+        # No valid authentication found
+        response = jsonify({
+            "error": "Authentication required",
+            "message": "Please provide valid credentials via login session or HTTP Basic Authentication",
+            "status_code": 401
+        })
+        response.status_code = 401
+        response.headers['WWW-Authenticate'] = 'Basic realm="ReliefBox API"'
+        return response
+    
+    return decorated_function
+
+
+def get_current_user():
+    """Get the current user from either Flask-Login or Basic Auth."""
+    if current_user.is_authenticated:
+        return current_user
+    
+    # Check if user was set via basic auth
+    from flask import g
+    if hasattr(g, 'current_user'):
+        return g.current_user
+    
+    return None
 
 
 @main.route("/choose_input_method", methods=["GET", "POST"])
@@ -303,92 +360,186 @@ def profile():
 
 
 @main.route("/add_beneficiary", methods=["POST"])
-@login_required
+@basic_auth_required
 def add_beneficiary():
-    """Add a single beneficiary record via JSON POST request with detailed logging and cookie validation."""
+    """Add a single beneficiary record via JSON POST request with comprehensive error handling."""
     try:
-        logging.info("Received request to add beneficiary")
+        # Get the current user (from Flask-Login or Basic Auth)
+        user = get_current_user()
+        if not user:
+            logging.error("No authenticated user found")
+            return jsonify({
+                "error": "Authentication error",
+                "message": "Unable to identify authenticated user",
+                "status_code": 401
+            }), 401
 
-        # Check for valid session cookie in headers
-        session_cookie = request.cookies.get("session")
-        if not session_cookie or "distrib_id" not in session:
-            logging.warning("Missing or invalid session cookie")
-            return jsonify({"error": "Authentication required or invalid session"}), 401
+        logging.info(f"Received request to add beneficiary from user: {user.email}")
 
-        # Get JSON data from request
+        # Get JSON data from request first
         data = request.get_json()
         logging.debug(f"Request JSON data: {data}")
-        if not data:
-            logging.warning("No JSON data provided in request")
-            return jsonify({"error": "No JSON data provided"}), 400
-
-        # Validate required fields
-        if "code" not in data:
-            logging.warning("Missing required field: code")
-            return jsonify({"error": "Field 'code' is required"}), 400
         
-        if "distrib_id" not in data:
-            logging.warning("Missing required field: distrib_id")
-            return jsonify({"error": "Field 'distrib_id' is required"}), 400
+        # Validate JSON payload exists
+        if not data:
+            logging.error("No JSON data provided in request")
+            return jsonify({
+                "error": "No JSON data provided",
+                "message": "Request must contain valid JSON data",
+                "status_code": 400
+            }), 400
+
+        # Validate required fields with detailed error messages
+        if "code" not in data or not data["code"]:
+            logging.error("Missing or empty required field: code")
+            return jsonify({
+                "error": "Field 'code' is required",
+                "message": "Beneficiary code must be provided and cannot be empty",
+                "status_code": 400
+            }), 400
+        
+        if "distrib_id" not in data or not data["distrib_id"]:
+            logging.error("Missing or empty required field: distrib_id")
+            return jsonify({
+                "error": "Field 'distrib_id' is required",
+                "message": "Distribution ID must be provided and cannot be empty",
+                "status_code": 400
+            }), 400
+
+        # Validate distrib_id is a valid integer
+        try:
+            distrib_id = int(data["distrib_id"])
+            if distrib_id <= 0:
+                raise ValueError("Distribution ID must be positive")
+        except (ValueError, TypeError) as e:
+            logging.error(f"Invalid distrib_id format: {data['distrib_id']}")
+            return jsonify({
+                "error": "Invalid distribution ID format",
+                "message": "Distribution ID must be a positive integer",
+                "status_code": 400
+            }), 400
+
+        # Validate code format (ensure it's not just whitespace)
+        if not str(data["code"]).strip():
+            logging.error("Beneficiary code is empty or whitespace only")
+            return jsonify({
+                "error": "Invalid beneficiary code",
+                "message": "Beneficiary code cannot be empty or whitespace only",
+                "status_code": 400
+            }), 400
 
         # Verify user has access to this distribution
-        from app import Distribution
-        logging.info(f"Checking access for user {current_user.email} to distribution {data['distrib_id']}")
-        distribution = Distribution.query.filter_by(
-            id=data["distrib_id"], user_email=current_user.email
-        ).first()
-        
-        if not distribution:
-            logging.warning(f"Distribution {data['distrib_id']} not found or access denied for user {current_user.email}")
-            return jsonify({"error": "Distribution not found or access denied"}), 404
+        try:
+            from app import Distribution
+            logging.info(f"Checking access for user {user.email} to distribution {distrib_id}")
+            distribution = Distribution.query.filter_by(
+                id=distrib_id, user_email=user.email
+            ).first()
+            
+            if not distribution:
+                logging.warning(f"Distribution {distrib_id} not found or access denied for user {user.email}")
+                return jsonify({
+                    "error": "Distribution not found or access denied",
+                    "message": f"Distribution with ID {distrib_id} does not exist or you don't have permission to access it",
+                    "status_code": 404
+                }), 404
+        except Exception as e:
+            logging.error(f"Database error while checking distribution access: {str(e)}")
+            return jsonify({
+                "error": "Database error",
+                "message": "Failed to verify distribution access",
+                "status_code": 500
+            }), 500
 
         # Check if beneficiary with this code already exists
-        beneficiary_id = str(data["distrib_id"]) + str(data["code"])
+        beneficiary_id = str(distrib_id) + str(data["code"]).strip()
         logging.info(f"Checking if beneficiary with id {beneficiary_id} already exists")
-        existing_beneficiary = get_beneficiary_entry(
-            beneficiary_id=beneficiary_id,
-            user_email=current_user.email,
-            distrib_id=data["distrib_id"],
-        )
-
-        if existing_beneficiary not in ["not_found", "no_data"]:
-            logging.warning(f"Beneficiary with code '{data['code']}' already exists in distribution {data['distrib_id']}")
-            return (
-                jsonify(
-                    {"error": f"Beneficiary with code '{data['code']}' already exists"}
-                ),
-                409,
+        
+        try:
+            existing_beneficiary = get_beneficiary_entry(
+                beneficiary_id=beneficiary_id,
+                user_email=user.email,
+                distrib_id=distrib_id,
             )
+
+            if existing_beneficiary not in ["not_found", "no_data"]:
+                logging.warning(f"Beneficiary with code '{data['code']}' already exists in distribution {distrib_id}")
+                return jsonify({
+                    "error": "Beneficiary already exists",
+                    "message": f"Beneficiary with code '{data['code']}' already exists in distribution '{distribution.name}'",
+                    "status_code": 409,
+                    "existing_beneficiary_id": beneficiary_id
+                }), 409
+        except Exception as e:
+            logging.error(f"Error checking existing beneficiary: {str(e)}")
+            return jsonify({
+                "error": "Database error",
+                "message": "Failed to check for existing beneficiary",
+                "status_code": 500
+            }), 500
 
         # Set default values for required fields
         data.setdefault("recipient", "No")
         data.setdefault("received_when", None)
         logging.debug(f"Beneficiary data to save: {data}")
 
-        # Save the new beneficiary using the single beneficiary function
-        logging.info(f"Saving new beneficiary for distribution {data['distrib_id']}")
-        saved_id = save_single_beneficiary(
-            beneficiary_data=data,
-            distrib_id=data["distrib_id"], 
-            user_email=current_user.email
-        )
-        logging.info(f"Beneficiary saved with id {saved_id}")
+        # Validate and clean the data
+        cleaned_data = {}
+        for key, value in data.items():
+            if key not in ["id", "partitionKey"]:  # Skip internal fields
+                cleaned_data[key] = str(value).strip() if value is not None else None
 
-        return (
-            jsonify(
-                {
-                    "success": True,
-                    "message": f"Beneficiary with code '{data['code']}' added successfully to distribution {distribution.name}",
-                    "beneficiary_id": saved_id,
-                    "distribution_id": data["distrib_id"],
-                }
-            ),
-            201,
-        )
+        # Save the new beneficiary using the single beneficiary function
+        logging.info(f"Saving new beneficiary for distribution {distrib_id}")
+        try:
+            saved_id = save_single_beneficiary(
+                beneficiary_data=cleaned_data,
+                distrib_id=distrib_id, 
+                user_email=user.email
+            )
+            
+            if not saved_id:
+                logging.error("Failed to save beneficiary - no ID returned")
+                return jsonify({
+                    "error": "Save operation failed",
+                    "message": "Beneficiary could not be saved to database",
+                    "status_code": 500
+                }), 500
+                
+            logging.info(f"Beneficiary successfully saved with id {saved_id}")
+
+        except Exception as e:
+            logging.error(f"Error saving beneficiary: {str(e)}")
+            return jsonify({
+                "error": "Database save error",
+                "message": "Failed to save beneficiary to database",
+                "details": str(e),
+                "status_code": 500
+            }), 500
+
+        # Success response - ensure 201 status
+        success_response = {
+            "success": True,
+            "message": f"Beneficiary with code '{data['code']}' added successfully to distribution '{distribution.name}'",
+            "beneficiary_id": saved_id,
+            "distribution_id": distrib_id,
+            "distribution_name": distribution.name,
+            "authenticated_user": user.email,
+            "authentication_method": "basic_auth" if hasattr(request, 'authorization') and request.authorization else "session",
+            "status_code": 201
+        }
+        
+        logging.info(f"Successfully created beneficiary {saved_id} for distribution {distrib_id} by user {user.email}")
+        return jsonify(success_response), 201
 
     except Exception as e:
-        logging.exception("Exception occurred while adding beneficiary")
-        return jsonify({"error": "Internal server error"}), 500
+        logging.exception(f"Unexpected exception occurred while adding beneficiary: {str(e)}")
+        return jsonify({
+            "error": "Internal server error",
+            "message": "An unexpected error occurred while processing your request",
+            "details": str(e),
+            "status_code": 500
+        }), 500
 
 # Distribution-specific routes with distrib_id in URL
 @main.route("/distribution/<int:distrib_id>/beneficiaries", methods=["GET"])
@@ -458,3 +609,33 @@ def get_beneficiary(distrib_id, code):
             "beneficiary": beneficiary_data,
             "distribution_id": distrib_id
         }), 200
+
+@main.route("/api/health", methods=["GET"])
+def health_check():
+    """Health check endpoint to verify API is working."""
+    return jsonify({
+        "status": "healthy",
+        "message": "API is running",
+        "timestamp": datetime.now().isoformat(),
+        "status_code": 200
+    }), 200
+
+@main.route("/api/test-status-codes", methods=["GET"])
+def test_status_codes():
+    """Test endpoint to verify different status codes are working."""
+    test_type = request.args.get('type', 'success')
+    
+    if test_type == 'success':
+        return jsonify({"message": "Success test", "status_code": 200}), 200
+    elif test_type == 'created':
+        return jsonify({"message": "Created test", "status_code": 201}), 201
+    elif test_type == 'bad_request':
+        return jsonify({"error": "Bad request test", "status_code": 400}), 400
+    elif test_type == 'not_found':
+        return jsonify({"error": "Not found test", "status_code": 404}), 404
+    elif test_type == 'conflict':
+        return jsonify({"error": "Conflict test", "status_code": 409}), 409
+    elif test_type == 'server_error':
+        return jsonify({"error": "Server error test", "status_code": 500}), 500
+    else:
+        return jsonify({"error": "Invalid test type", "status_code": 400}), 400
