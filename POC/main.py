@@ -9,6 +9,7 @@ from flask import (
     send_file,
     session,
     url_for,
+    redirect,
 )
 from utils import (
     get_beneficiary_entry,
@@ -257,22 +258,43 @@ def index():
     if "distrib_name" not in session.keys() or "distrib_place" not in session.keys():
         return render_template("index_distrib.html", email=current_user.email)
     else:
-        data = get_beneficiary_data(
-            user_email=current_user.email, distrib_id=session["distrib_id"]
-        )
-        number_beneficiaries, number_recipients = 0, 0
-        if data is not None:
-            number_beneficiaries = len(data)
-        if number_beneficiaries > 0 and "recipient" in data.columns:
-            number_recipients = len(data[data["recipient"] == "Yes"])
-        return render_template(
-            "index.html",
-            distrib_name=str(session["distrib_name"]),
-            distrib_place=str(session["distrib_place"]),
-            distrib_date=str(session["distrib_date"]),
-            number_beneficiaries=number_beneficiaries,
-            number_recipients=number_recipients,
-        )
+        return redirect(url_for("main.index_with_distrib", distrib_id=session["distrib_id"]))
+
+@main.route("/distribution/<int:distrib_id>")
+@login_required
+def index_with_distrib(distrib_id):
+    # Verify user has access to this distribution
+    from app import Distribution
+    distribution = Distribution.query.filter_by(
+        id=distrib_id, user_email=current_user.email
+    ).first()
+    
+    if not distribution:
+        return render_template("index_distrib.html", email=current_user.email)
+    
+    # Update session with current distribution
+    session["distrib_id"] = distrib_id
+    session["distrib_name"] = distribution.name
+    session["distrib_place"] = distribution.place
+    session["distrib_date"] = distribution.date
+    
+    data = get_beneficiary_data(
+        user_email=current_user.email, distrib_id=distrib_id
+    )
+    number_beneficiaries, number_recipients = 0, 0
+    if data is not None:
+        number_beneficiaries = len(data)
+    if number_beneficiaries > 0 and "recipient" in data.columns:
+        number_recipients = len(data[data["recipient"] == "Yes"])
+    return render_template(
+        "index.html",
+        distrib_name=str(distribution.name),
+        distrib_place=str(distribution.place),
+        distrib_date=str(distribution.date),
+        distrib_id=distrib_id,
+        number_beneficiaries=number_beneficiaries,
+        number_recipients=number_recipients,
+    )
 
 
 @main.route("/profile")
@@ -285,10 +307,6 @@ def profile():
 def add_beneficiary():
     """Add a single beneficiary record via JSON POST request."""
     try:
-        # Check if distribution is selected
-        if "distrib_id" not in session:
-            return jsonify({"error": "No distribution selected"}), 400
-
         # Get JSON data from request
         data = request.get_json()
         if not data:
@@ -297,13 +315,25 @@ def add_beneficiary():
         # Validate required fields
         if "code" not in data:
             return jsonify({"error": "Field 'code' is required"}), 400
+        
+        if "distrib_id" not in data:
+            return jsonify({"error": "Field 'distrib_id' is required"}), 400
+
+        # Verify user has access to this distribution
+        from app import Distribution
+        distribution = Distribution.query.filter_by(
+            id=data["distrib_id"], user_email=current_user.email
+        ).first()
+        
+        if not distribution:
+            return jsonify({"error": "Distribution not found or access denied"}), 404
 
         # Check if beneficiary with this code already exists
-        beneficiary_id = str(session["distrib_id"]) + str(data["code"])
+        beneficiary_id = str(data["distrib_id"]) + str(data["code"])
         existing_beneficiary = get_beneficiary_entry(
             beneficiary_id=beneficiary_id,
             user_email=current_user.email,
-            distrib_id=session["distrib_id"],
+            distrib_id=data["distrib_id"],
         )
 
         if existing_beneficiary not in ["not_found", "no_data"]:
@@ -321,7 +351,7 @@ def add_beneficiary():
         # Save the new beneficiary using the single beneficiary function
         saved_id = save_single_beneficiary(
             beneficiary_data=data,
-            distrib_id=session["distrib_id"], 
+            distrib_id=data["distrib_id"], 
             user_email=current_user.email
         )
 
@@ -329,8 +359,9 @@ def add_beneficiary():
             jsonify(
                 {
                     "success": True,
-                    "message": f"Beneficiary with code '{data['code']}' added successfully",
+                    "message": f"Beneficiary with code '{data['code']}' added successfully to distribution {distribution.name}",
                     "beneficiary_id": saved_id,
+                    "distribution_id": data["distrib_id"],
                 }
             ),
             201,
@@ -339,3 +370,72 @@ def add_beneficiary():
     except Exception as e:
         logging.exception(e)
         return jsonify({"error": "Internal server error"}), 500
+
+# Distribution-specific routes with distrib_id in URL
+@main.route("/distribution/<int:distrib_id>/beneficiaries", methods=["GET"])
+@login_required
+def view_beneficiaries(distrib_id):
+    """View all beneficiaries for a specific distribution."""
+    # Verify user has access to this distribution
+    from app import Distribution
+    distribution = Distribution.query.filter_by(
+        id=distrib_id, user_email=current_user.email
+    ).first()
+    
+    if not distribution:
+        return jsonify({"error": "Distribution not found or access denied"}), 404
+    
+    data = get_beneficiary_data(
+        user_email=current_user.email, distrib_id=distrib_id
+    )
+    
+    if data is None:
+        return jsonify({"beneficiaries": [], "count": 0}), 200
+    
+    # Convert to JSON-serializable format
+    beneficiaries = data.to_dict('records')
+    return jsonify({
+        "beneficiaries": beneficiaries,
+        "count": len(beneficiaries),
+        "distribution": {
+            "id": distrib_id,
+            "name": distribution.name,
+            "place": distribution.place,
+            "date": str(distribution.date)
+        }
+    }), 200
+
+@main.route("/distribution/<int:distrib_id>/beneficiaries/<code>", methods=["GET"])
+@login_required
+def get_beneficiary(distrib_id, code):
+    """Get a specific beneficiary by code for a distribution."""
+    # Verify user has access to this distribution
+    from app import Distribution
+    distribution = Distribution.query.filter_by(
+        id=distrib_id, user_email=current_user.email
+    ).first()
+    
+    if not distribution:
+        return jsonify({"error": "Distribution not found or access denied"}), 404
+    
+    beneficiary_id = str(distrib_id) + str(code)
+    beneficiary_data = get_beneficiary_entry(
+        beneficiary_id=beneficiary_id,
+        user_email=current_user.email,
+        distrib_id=distrib_id,
+    )
+    
+    if beneficiary_data == "not_found":
+        return jsonify({"error": "Beneficiary not found"}), 404
+    elif beneficiary_data == "no_data":
+        return jsonify({"error": "No data available"}), 404
+    else:
+        # Remove internal fields
+        for internal_field in ["id", "distrib_id", "partitionKey"]:
+            if internal_field in beneficiary_data:
+                beneficiary_data.pop(internal_field)
+        
+        return jsonify({
+            "beneficiary": beneficiary_data,
+            "distribution_id": distrib_id
+        }), 200

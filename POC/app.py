@@ -237,7 +237,7 @@ def create_distrib():
         session["distrib_id"] = new_distrib.id
         for feature in ["name", "place", "date", "items", "donor"]:
             session[f"distrib_{feature}"] = request.form[f"distrib_{feature}"]
-        return redirect(url_for("main.index"))
+        return redirect(url_for("main.index_with_distrib", distrib_id=new_distrib.id))
     else:
         return render_template("name_distrib.html")
 
@@ -282,7 +282,7 @@ def select_distrib():
         session[f"distrib_date"] = distrib_.date
         session[f"distrib_items"] = distrib_.items
         session[f"distrib_donor"] = distrib_.donor
-        return redirect(url_for("main.index"))
+        return redirect(url_for("main.index_with_distrib", distrib_id=distrib_.id))
     else:
         return render_template("list_distrib.html")
 
