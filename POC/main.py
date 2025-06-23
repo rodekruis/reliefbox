@@ -305,9 +305,16 @@ def profile():
 @main.route("/add_beneficiary", methods=["POST"])
 @login_required
 def add_beneficiary():
-    """Add a single beneficiary record via JSON POST request with detailed logging."""
+    """Add a single beneficiary record via JSON POST request with detailed logging and cookie validation."""
     try:
         logging.info("Received request to add beneficiary")
+
+        # Check for valid session cookie in headers
+        session_cookie = request.cookies.get("session")
+        if not session_cookie or "distrib_id" not in session:
+            logging.warning("Missing or invalid session cookie")
+            return jsonify({"error": "Authentication required or invalid session"}), 401
+
         # Get JSON data from request
         data = request.get_json()
         logging.debug(f"Request JSON data: {data}")
