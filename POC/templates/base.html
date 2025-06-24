@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+
+<script type="text/javascript" src="{{url_for('static', filename='navbar-burger.js')}}"></script>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ReliefBox</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <style>
+    #noteligible {
+        background-color: #F53335 !important;
+    }
+    #eligible {
+        background-color: #03e03e !important;
+    }
+    .label[style*="color: white"] {
+        color: white !important;
+        font-weight: normal !important;
+    }
+  </style>
+  <script type="text/javascript">
+      function checkCookiesStats() {
+         if(navigator.cookieEnabled) {
+            document.getElementById("check-cookies").innerHTML="";
+         } else {
+            document.getElementById("check-cookies").innerHTML="You must enable cookies in your browser to use ReliefBox";
+         }
+      }
+   </script>
+</head>
+
+<body onload="checkCookiesStats()">
+<section class="hero is-primary is-fullheight">
+
+  <nav class="navbar" role="navigation" aria-label="main navigation">
+    <div class="navbar-brand">
+      <!--    <a class="navbar-item">-->
+      <img src="{{url_for('static', filename='ReliefBox-horizontal-nobackground.png')}}" width="220" height="30">
+      <!--    </a>-->
+
+      <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+      </a>
+    </div>
+
+    <div id="navbarBasicExample" class="navbar-menu">
+      <div class="navbar-start">
+        <a href="{{ url_for('main.index') }}"  class="navbar-item">
+          Home
+        </a>
+
+        <a href="{{ url_for('index_distrib') }}"  class="navbar-item">
+          Distributions
+        </a>
+
+        <a href="https://reliefbox.readthedocs.io/" class="navbar-item" target="_blank" rel="noopener noreferrer">
+          Documentation
+        </a>
+      </div>
+
+      <div class="navbar-end">
+        {% if not current_user.is_authenticated %}
+        <a href="{{ url_for('signup') }}" class="navbar-item">
+          Sign up
+        </a>
+        <a href="{{ url_for('login') }}" class="navbar-item">
+          Log in
+        </a>
+        {% else %}
+        <a href="{{ url_for('logout') }}" class="navbar-item">
+          Logout
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  <div class="hero-body">
+    <div class="container has-text-centered">
+
+        <div class="column is-4 is-offset-4">
+<!--          <div class="box">-->
+<!--            <div class="notification is-danger">-->
+                <label id="check-cookies" class="label is-medium" style="color:red; background-color:white"></label>
+<!--            </div>-->
+<!--          </div>-->
+        </div>
+
+      {% block content %}
+      {% endblock %}
+    </div>
+  </div>
+
+  <div class="hero-foot">
+    <nav class="navbar">
+      <div class="container">
+        <div id="navbarMenuHeroA" class="navbar-menu">
+          <div class="navbar-end" hidden>
+            <div class="navbar-item">
+              Built with love by &nbsp;<a href="https://www.510.global/"> <img src="{{url_for('static', filename='510logo.jpg')}}"></a>
+              &nbsp; <a href="https://github.com/rodekruis/relief-app"> see the project on GitHub</a>.
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+  </div>
+</section>
+</body>
+
+</html>
