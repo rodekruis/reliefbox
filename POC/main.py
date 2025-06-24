@@ -73,6 +73,23 @@ def basic_auth_required(f):
     
     return decorated_function
 
+def cleankobodata(data: dict) -> dict:
+    keys = list(data.keys())
+
+    try:
+        start_index = keys.index("end") + 1
+        end_index = keys.index("__version__")
+    except ValueError:
+        return {}  # Return empty if "end" or "__version__" not found
+
+    trimmed_keys = keys[start_index:end_index]
+    cleaned = {}
+
+    for key in trimmed_keys:
+        short_key = key.split("/")[-1]
+        cleaned[short_key] = data[key]
+
+    return cleaned
 
 def get_current_user():
     """Get the current user from either Flask-Login or Basic Auth."""
@@ -379,6 +396,7 @@ def add_beneficiary():
         # Get JSON data from request first
         data = request.get_json()
         logging.debug(f"Request JSON data: {data}")
+        data = cleankobodata(data)
         
         # Validate JSON payload exists
         if not data:
