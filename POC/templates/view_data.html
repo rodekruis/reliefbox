@@ -2,28 +2,27 @@
 
 {% block content %}
 <div class="column">
-  <div class="box">
-    <div class="columns">
-      {% for column in columns %}
-      <div class="column">
-        <label class="label is-medium">{{ column }}</label>
-      </div>
-      {% endfor %}
+  <div class="box" style="max-width: 100%; min-width: 400px;">
+    <div style="overflow-x: auto;">
+      <table class="table is-fullwidth is-striped is-bordered">
+        <thead>
+          <tr>
+            {% for column in columns %}
+            <th class="has-text-left" style="font-size:90%">{{ column }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            {% for column in columns %}
+            <td class="has-text-left" style="font-size:100%">{{ row[column] }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-    {% for row in rows %}
-    <div class="columns">
-      {% for column in columns %}
-      <div class="column">
-        <label class="label is-small" style="font-size:100%">{{ row[column] }}</label>
-      </div>
-      {% endfor %}
-    </div>
-    {% endfor %}
   </div>
-</div>
-<div class="column is-4 is-offset-4">
-  <form action="/" method="GET">
-    <button class="button is-block is-info is-medium is-fullwidth">Go back to main menu</button>
-  </form>
 </div>
 {% endblock %}
