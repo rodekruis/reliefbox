@@ -247,6 +247,7 @@ def get_list_distrib():
     distrib_list = pd.DataFrame()
     for distrib_ in distributions:
         distrib_features = {}
+        distrib_features["distrib_id"] = distrib_.id
         distrib_features["Name"] = distrib_.name
         distrib_features["Location"] = distrib_.place
         distrib_features["Date"] = distrib_.date
