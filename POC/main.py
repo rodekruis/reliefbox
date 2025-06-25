@@ -77,7 +77,7 @@ def cleankobodata(data: dict) -> dict:
     keys = list(data.keys())
 
     try:
-        start_index = keys.index("end") + 1
+        start_index = keys.index("formhub/uuid") + 1
         end_index = keys.index("__version__")
     except ValueError:
         return {}  # Return empty if "end" or "__version__" not found
