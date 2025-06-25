@@ -247,12 +247,12 @@ def get_list_distrib():
     distrib_list = pd.DataFrame()
     for distrib_ in distributions:
         distrib_features = {}
-        distrib_features["distrib_id"] = distrib_.id
         distrib_features["Name"] = distrib_.name
         distrib_features["Location"] = distrib_.place
         distrib_features["Date"] = distrib_.date
         distrib_features["Items distributed"] = distrib_.items
         distrib_features["Donor"] = distrib_.donor
+        distrib_features["Distribution ID"] = distrib_.id
         df_dictionary = pd.DataFrame([distrib_features])
         distrib_list = pd.concat([distrib_list, df_dictionary], ignore_index=True)
     return distrib_list

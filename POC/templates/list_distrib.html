@@ -5,7 +5,7 @@
   <div class="box">
     <div class="columns">
       {% for column in columns %}
-      {% if column != 'Distrib_Id' %}
+      <!-- {% if column != 'Distrib_Id' %} -->
       <div class="column">
         <label class="label is-medium">{{ column }}</label>
       </div>
@@ -15,7 +15,7 @@
     {% for row in rows %}
     <div class="columns">
       {% for column in columns %}
-      {% if column != 'Distrib_Id' %}
+      <!-- {% if column != 'Distrib_Id' %} -->
       <div class="column">
         {% if column == 'Name' %}
         <form action="/select_distrib" method="POST">
