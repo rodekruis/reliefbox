@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="column is-4 is-offset-4">
+  <div class="box">
+    <label class="label is-medium">How will you insert the beneficiary codes?</label>
+    <br>
+    <form action="/save_input_method" method="POST">
+      <div class="control" hidden><input id="method1" class="input" type="text" name="input_method" value="video"></div>
+      <button class="button is-block is-info is-medium is-fullwidth">Using camera</button>
+    </form>
+    <br>
+    <form action="/save_input_method" method="POST">
+      <div class="control" hidden><input id="method2" class="input" type="text" name="input_method" value="text"></div>
+      <button class="button is-block is-info is-medium is-fullwidth">By typing</button>
+    </form>
+    <br>
+  </div>
+</div>
+{% endblock %}
