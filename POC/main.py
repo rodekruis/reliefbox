@@ -86,7 +86,7 @@ def cleankobodata(data: dict) -> dict:
     cleaned = {}
 
     for key in trimmed_keys:
-        short_key = key.split("/")[-1]
+        short_key = key.split("/")[-1].lower()
         cleaned[short_key] = data[key]
 
     return cleaned
