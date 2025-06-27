@@ -210,7 +210,7 @@ def save_single_beneficiary(beneficiary_data, distrib_id, user_email):
         # Add all other fields from the beneficiary data
         for key in beneficiary_data.keys():
             if key not in ["id", "partitionKey", "distrib_id"]:
-                body[key] = str(beneficiary_data[key]) if beneficiary_data[key] is not None else ""
+                body[key] = str(beneficiary_data[key]) if beneficiary_data[key] is not None else "None"
 
         # Determine storage mode
         mode = os.getenv("MODE", "offline")
@@ -225,7 +225,7 @@ def save_single_beneficiary(beneficiary_data, distrib_id, user_email):
             except Exception as e:
                 raise Exception(f"Failed to save to Cosmos DB: {str(e)}")
                 
-        elif mode == "offline":
+        elif mode == "offline": 
             try:
                 database = get_local_data_path(user_email, distrib_id)
                 
