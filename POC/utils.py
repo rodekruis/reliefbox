@@ -225,7 +225,7 @@ def save_single_beneficiary(beneficiary_data, distrib_id, user_email):
             except Exception as e:
                 raise Exception(f"Failed to save to Cosmos DB: {str(e)}")
                 
-        elif mode == "offline": 
+        elif mode == "offline":
             try:
                 database = get_local_data_path(user_email, distrib_id)
                 
