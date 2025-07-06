@@ -12,10 +12,12 @@
         <label class="label is-medium" style="color: white">{{ info_name }}: {{ info_values }}</label>
         {% endfor %}
       </div>
+      {% if data.recipient == "No" %}
       <form action="/received" method="POST">
         <div class="control" hidden><input id="codeinput" class="input" type="text" name="code" value={{ data.code }}></div>
         <button class="button is-block is-info is-medium is-fullwidth">Mark as recipient</button>
       </form>
+      {% endif %}
       <br>
       <form action="/input" method="GET">
         <button class="button is-block is-info is-medium is-fullwidth">Continue distribution</button>
