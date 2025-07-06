@@ -27,6 +27,7 @@ from datetime import datetime
 import logging
 import base64
 from functools import wraps
+from html import escape
 
 cosmos_db = get_cosmos_db()
 main = Blueprint("main", __name__)
@@ -175,10 +176,20 @@ def beneficiary():
 @login_required
 def received():
     if "code" in request.form.keys():
+        # Only set notes if user actually provided input
+        notes_input = request.form.get("notes", "")
+        if notes_input and notes_input.strip().lower() != "none":
+            notes = escape(notes_input.strip())[:100]  # Limit to 100 chars
+        else:
+            notes = None
+
         replace_body = {
             "recipient": "Yes",
             "received_when": datetime.now().strftime("%m/%d/%Y, %H:%M:%S"),
         }
+        if notes is not None:
+            replace_body["notes"] = notes
+
         result = update_beneficiary_entry(
             beneficiary_id=str(session["distrib_id"]) + str(request.form["code"]),
             user_email=current_user.email,
@@ -208,7 +219,9 @@ def process_data(partition_key):
             df["recipient"] = "No"
         if "received_when" not in df.columns:
             df["received_when"] = None
-
+        if "notes" not in df.columns:
+            df["notes"] = None
+        
         # drop KoBo internal fields
         df = df[[col for col in df.columns if not col.startswith("_")]]
 
@@ -246,7 +259,7 @@ def uploader():
             return render_template("upload_error.html")
     columns, rows = pandas_to_html(
         df,
-        replace_values={"received_when": {"None": ""}},
+        replace_values={"received_when": {"None": ""}, "notes": {"None": ""}},
         replace_columns={"received_when": "received when"},
         titlecase=True,
     )
@@ -264,7 +277,7 @@ def view_data():
     else:
         columns, rows = pandas_to_html(
             data,
-            replace_values={"received_when": {"None": ""}},
+            replace_values={"received_when": {"None": ""}, "notes": {"None": ""}},
             replace_columns={"received_when": "received when"},
             titlecase=True,
         )
@@ -283,7 +296,7 @@ def missing():
         data = data[data["recipient"] == "No"]
         columns, rows = pandas_to_html(
             data,
-            replace_values={"received_when": {"None": ""}},
+            replace_values={"received_when": {"None": ""}, "notes": {"None": ""}},
             replace_columns={"received_when": "received when"},
             titlecase=True,
         )
@@ -499,6 +512,7 @@ def add_beneficiary():
         # Set default values for required fields
         data.setdefault("recipient", "No")
         data.setdefault("received_when", None)
+        data.setdefault("notes", None)
         logging.debug(f"Beneficiary data to save: {data}")
 
         # Validate and clean the data

@@ -9,12 +9,31 @@
       <div class="box" id="noteligible">
         {% endif %}
         {% for info_name, info_values in data.items() %}
-        <label class="label is-medium" style="color: white">{{ info_name }}: {{ info_values }}</label>
+          {% if info_name != "notes" %}
+          <label class="label is-medium" style="color: white">{{ info_name }}: {{ info_values }}</label>
+          {% endif %}
         {% endfor %}
+        {% if data.notes and data.notes != "None" %}
+          <label class="label is-medium" style="color: white">Notes: {{ data.notes }}</label>
+        {% endif %}
       </div>
       {% if data.recipient == "No" %}
       <form action="/received" method="POST">
         <div class="control" hidden><input id="codeinput" class="input" type="text" name="code" value={{ data.code }}></div>
+        {% if not data.notes or data.notes == "None"%}
+          <div class="field">
+            <label class="label" style="color: white">Notes (optional):</label>
+            <div class="control">
+              <textarea
+                class="textarea"
+                name="notes"
+                maxlength="255"
+                rows="2"
+                style="border: 2px solid #23d160; text-align: center;"
+                placeholder="Add notes (max 100 chars)"></textarea>
+            </div>
+          </div>
+        {% endif %}
         <button class="button is-block is-info is-medium is-fullwidth">Mark as recipient</button>
       </form>
       {% endif %}
