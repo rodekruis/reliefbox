@@ -179,7 +179,7 @@ def received():
         # Only set notes if user actually provided input
         notes_input = request.form.get("notes", "")
         if notes_input and notes_input.strip().lower() != "none":
-            notes = escape(notes_input.strip())[:100]  # Limit to 100 chars
+            notes = escape(notes_input.strip())[:255]  # Limit to 255 chars
         else:
             notes = None
 
