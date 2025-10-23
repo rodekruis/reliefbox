@@ -10,41 +10,28 @@
     </div>
     {% endif %}
     {% endwith %}
-    <form action="/create_distrib" method="POST">
-      <div class="field">
-        <div class="control">
-          <input class="input is-medium" type="text" name="distrib_name" placeholder="Distribution name" autofocus="">
-        </div>
-      </div>
-      <div class="field">
-        <div class="control">
-          <input class="input is-medium" type="text" name="distrib_place" placeholder="Location" autofocus="">
-        </div>
-      </div>
-      <div class="columns is-mobile is-centered is-vcentered">
-        <div class="column is-one-fifth">
-          <div class="content is-medium" style="color:rgba(54,54,54,.3)">Date</div>
-        </div>
-        <div class="column is-four-fifths">
-          <div class="field">
-            <div class="control">
-              <input class="input is-medium" type="date" name="distrib_date" placeholder="Date" autofocus="">
-            </div>
+          <form action="/name_distrib" method="post">
+        <div class="field">
+          <label class="label">Distribution Name</label>
+          <div class="control">
+            <input class="input" type="text" placeholder="Distribution Name" name="distrib_name" required>
           </div>
         </div>
-      </div>
-      <div class="field">
-        <div class="control">
-          <input class="input is-medium" type="text" name="distrib_items" placeholder="Items distributed" autofocus="">
+        <div class="field">
+          <label class="label">Distribution Description</label>
+          <div class="control">
+            <textarea class="textarea" placeholder="Distribution Description" name="distrib_description"></textarea>
+          </div>
         </div>
-      </div>
-      <div class="field">
-        <div class="control">
-          <input class="input is-medium" type="text" name="distrib_donor" placeholder="Donor" autofocus="">
+        <div class="field is-grouped">
+          <div class="control">
+            <input type="submit" class="button is-link" value="Next: Upload Data">
+          </div>
+          <div class="control">
+            <a href="/" class="button is-light">Cancel</a>
+          </div>
         </div>
-      </div>
-      <button class="button is-block is-info is-medium is-fullwidth">Create</button>
-    </form>
+      </form>
   </div>
 </div>
 {% endblock %}

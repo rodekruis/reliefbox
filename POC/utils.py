@@ -181,7 +181,15 @@ def pandas_to_html(df, replace_values={}, replace_columns={}, titlecase=False):
     for ix, row in df.iterrows():
         row_dict = row.to_dict()
         for key in row.keys():
-            row[key] = str(row[key]).strip()
+            value = str(row[key]).strip()
+            # Handle signature data specially
+            if key.lower() == 'signature' and value.startswith('data:image'):
+                # Create a clickable button that shows the signature inline
+                code = row.get('code', ix)  # Use code if available, otherwise use index
+                value = f'''<button onclick="showSignature('{value}', '{code}')" class="button is-small is-success">✓ Signed</button>'''
+            elif key.lower() == 'signature' and (value == 'None' or value == 'nan' or not value):
+                value = "Not signed"
+            row_dict[key] = value
         rows.append(row_dict)
     print(columns, rows)
     return columns, rows
@@ -272,3 +280,47 @@ def save_single_beneficiary(beneficiary_data, distrib_id, user_email):
         import logging
         logging.error(f"Error in save_single_beneficiary: {str(e)}")
         raise Exception(f"Failed to save beneficiary: {str(e)}")
+
+
+def delete_single_beneficiary(beneficiary_id, user_email, distrib_id):
+    """Delete a single beneficiary record from the database."""
+    try:
+        if not beneficiary_id:
+            raise ValueError("beneficiary_id cannot be empty")
+        if not user_email:
+            raise ValueError("user_email cannot be empty")
+        if not distrib_id:
+            raise ValueError("distrib_id cannot be empty")
+
+        mode = os.getenv("MODE", "offline")
+        
+        if mode == "online":
+            try:
+                cosmos_container = cosmos_db.get_container_client("Beneficiaries")
+                cosmos_container.delete_item(item=beneficiary_id, partition_key=user_email)
+            except Exception as e:
+                raise Exception(f"Failed to delete from Cosmos DB: {str(e)}")
+                
+        elif mode == "offline":
+            try:
+                database = get_local_data_path(user_email, distrib_id)
+                if os.path.exists(database):
+                    df = pd.read_csv(database, sep=";", dtype={"id": str}).set_index("id")
+                    if beneficiary_id in df.index:
+                        df = df.drop(beneficiary_id)
+                        df.to_csv(database, sep=";")
+                    else:
+                        raise ValueError(f"Beneficiary with ID {beneficiary_id} not found")
+                else:
+                    raise ValueError("Database file does not exist")
+            except Exception as e:
+                raise Exception(f"Failed to delete from local database: {str(e)}")
+        else:
+            raise ValueError(f"Invalid MODE setting: {mode}. Must be 'online' or 'offline'")
+
+        return True
+        
+    except Exception as e:
+        import logging
+        logging.error(f"Error in delete_single_beneficiary: {str(e)}")
+        raise Exception(f"Failed to delete beneficiary: {str(e)}")

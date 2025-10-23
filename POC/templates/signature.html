@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="column is-8 is-offset-2">
+  <div class="box">
+    <h3 class="title is-4 has-text-centered">Signature Required</h3>
+    
+    <div class="notification is-info">
+      <p><strong>{{ data.name if data.name else 'Beneficiary' }}</strong> (Code: {{ data.code }})</p>
+      <p>Please provide your signature to confirm receipt of distribution items.</p>
+    </div>
+    
+    <div class="field">
+      <label class="label">Signature:</label>
+      <div class="control">
+        <div style="border: 2px solid #dbdbdb; border-radius: 6px; background-color: white;">
+          <canvas 
+            id="signatureCanvas" 
+            width="700" 
+            height="200" 
+            style="display: block; margin: 0 auto; cursor: crosshair; touch-action: none;">
+            Your browser does not support the HTML5 canvas tag.
+          </canvas>
+        </div>
+      </div>
+      <p class="help">Draw your signature in the box above using your finger or mouse</p>
+    </div>
+    
+    <div class="field is-grouped is-grouped-centered">
+      <div class="control">
+        <button id="clearSignature" class="button is-light">Clear Signature</button>
+      </div>
+      <div class="control">
+        <button id="confirmSignature" class="button is-primary" disabled>Confirm Receipt</button>
+      </div>
+      <div class="control">
+        <a href="/entry?code={{ data.code }}" class="button is-light">Cancel</a>
+      </div>
+    </div>
+    
+    <!-- Hidden form to submit signature -->
+    <form id="signatureForm" action="/confirm_receipt_with_signature" method="POST" style="display: none;">
+      <input type="hidden" name="code" value="{{ data.code }}">
+      <input type="hidden" name="notes" value="{{ notes }}">
+      <input type="hidden" name="signature_data" id="signatureData">
+    </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const canvas = document.getElementById('signatureCanvas');
+    const ctx = canvas.getContext('2d');
+    const clearButton = document.getElementById('clearSignature');
+    const confirmButton = document.getElementById('confirmSignature');
+    const signatureForm = document.getElementById('signatureForm');
+    const signatureDataInput = document.getElementById('signatureData');
+    
+    let isDrawing = false;
+    let hasSignature = false;
+    
+    // Set up canvas drawing properties
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    // Mouse events
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    
+    // Touch events for mobile devices
+    canvas.addEventListener('touchstart', handleTouch);
+    canvas.addEventListener('touchmove', handleTouch);
+    canvas.addEventListener('touchend', stopDrawing);
+    
+    function startDrawing(e) {
+        isDrawing = true;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+    }
+    
+    function draw(e) {
+        if (!isDrawing) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        
+        if (!hasSignature) {
+            hasSignature = true;
+            confirmButton.disabled = false;
+            confirmButton.textContent = 'Confirm Receipt';
+            confirmButton.classList.remove('is-primary');
+            confirmButton.classList.add('is-success');
+        }
+    }
+    
+    function stopDrawing() {
+        isDrawing = false;
+        ctx.beginPath();
+    }
+    
+    function handleTouch(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                          e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+        });
+        canvas.dispatchEvent(mouseEvent);
+    }
+    
+    clearButton.addEventListener('click', function() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        hasSignature = false;
+        confirmButton.disabled = true;
+        confirmButton.textContent = 'Confirm Receipt';
+        confirmButton.classList.remove('is-success');
+        confirmButton.classList.add('is-primary');
+    });
+    
+    confirmButton.addEventListener('click', function() {
+        if (hasSignature) {
+            // Convert canvas to base64 data URL
+            const signatureDataURL = canvas.toDataURL('image/png');
+            signatureDataInput.value = signatureDataURL;
+            
+            // Show loading state
+            confirmButton.disabled = true;
+            confirmButton.textContent = 'Processing...';
+            confirmButton.classList.add('is-loading');
+            
+            // Submit form
+            signatureForm.submit();
+        }
+    });
+    
+    // Responsive canvas sizing
+    function resizeCanvas() {
+        const container = canvas.parentElement;
+        const containerWidth = container.clientWidth - 20; // Account for padding
+        if (containerWidth < 700) {
+            canvas.style.width = '100%';
+            canvas.style.height = 'auto';
+        }
+    }
+    
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+});
+</script>
+
+<style>
+#signatureCanvas {
+    border: 2px solid #dbdbdb;
+    border-radius: 6px;
+    background-color: white;
+    max-width: 100%;
+    height: auto;
+}
+
+@media (max-width: 768px) {
+    #signatureCanvas {
+        width: 100% !important;
+        height: 150px !important;
+    }
+}
+
+.box {
+    background-color: #f5f5f5;
+}
+
+#eligible {
+    background-color: #23d160;
+}
+
+#noteligible {
+    background-color: #ff3860;
+}
+</style>
+{% endblock %}

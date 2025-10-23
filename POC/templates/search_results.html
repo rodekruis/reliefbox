@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="column is-10 is-offset-1">
+  <div class="box">
+    <h3 class="title is-4">Search Results</h3>
+    
+    {% if results|length == 0 %}
+    <div class="notification is-warning">
+      <p><strong>No results found</strong></p>
+      <p>No beneficiaries match your search criteria.</p>
+    </div>
+    {% elif results|length == 1 %}
+    <!-- Single result - redirect automatically -->
+    <div class="notification is-success">
+      <p>Found one match. Redirecting...</p>
+    </div>
+    <script>
+      // Auto-redirect to the single result
+      window.location.href = "/entry?code={{ results[0].code }}";
+    </script>
+    {% else %}
+    <div class="notification is-info">
+      <p><strong>{{ results|length }} results found</strong></p>
+      <p>Please select the correct beneficiary:</p>
+    </div>
+    
+    <div class="table-container">
+      <table class="table is-striped is-fullwidth">
+        <thead>
+          <tr>
+            <th>Action</th>
+            {% for column in columns %}
+            <th>{{ column|title }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for result in results %}
+          <tr>
+            <td>
+              <a href="/entry?code={{ result.code }}" class="button is-small is-primary">
+                Select
+              </a>
+            </td>
+            {% for column in columns %}
+            <td>{{ result[column] if result[column] is not none else '' }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    
+    <div class="field is-grouped">
+      <div class="control">
+        <a href="/search" class="button is-light">New Search</a>
+      </div>
+      <div class="control">
+        <a href="/choose_input_method" class="button is-light">Back to Input Methods</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
