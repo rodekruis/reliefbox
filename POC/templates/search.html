@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="column is-6 is-offset-3">
+  <div class="box">
+    <h3 class="title is-4">Search Beneficiaries</h3>
+    
+    <form action="/search_beneficiaries" method="POST">
+      <div class="field">
+        <label class="label">Search Column</label>
+        <div class="control">
+          <div class="select is-fullwidth">
+            <select name="search_column" required>
+              <option value="">Select a column to search in</option>
+              {% for column in columns %}
+              <option value="{{ column }}">{{ column|title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <div class="field">
+        <label class="label">Search Value</label>
+        <div class="control">
+          <input class="input" type="text" name="search_value" placeholder="Enter search term" required autofocus>
+        </div>
+      </div>
+      
+      <div class="field">
+        <div class="control">
+          <label class="checkbox">
+            <input type="checkbox" name="exact_match">
+            Exact match only
+          </label>
+        </div>
+        <p class="help">If unchecked, will search for partial matches (contains search term)</p>
+      </div>
+      
+      <div class="field">
+        <div class="control">
+          <button class="button is-primary is-fullwidth">Search</button>
+        </div>
+      </div>
+    </form>
+    
+    <div class="field">
+      <div class="control">
+        <a href="/choose_input_method" class="button is-light is-fullwidth">Back to input methods</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

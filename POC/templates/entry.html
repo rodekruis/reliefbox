@@ -9,12 +9,46 @@
       <div class="box" id="noteligible">
         {% endif %}
         {% for info_name, info_values in data.items() %}
-        <label class="label is-medium" style="color: white">{{ info_name }}: {{ info_values }}</label>
+          {% if info_name != "notes" and info_name != "signature" %}
+          <label class="label is-medium" style="color: white">{{ info_name }}: {{ info_values }}</label>
+          {% endif %}
         {% endfor %}
+        {% if data.notes and data.notes != "None" %}
+          <label class="label is-medium" style="color: white">Notes: {{ data.notes }}</label>
+        {% endif %}
+        {% if data.signature and data.signature != "None" and data.signature != "nan" and data.recipient == "Yes" %}
+          <div style="margin-top: 10px;">
+            <label class="label is-medium" style="color: white">Signature:</label>
+            <div style="background-color: white; padding: 10px; border-radius: 5px; text-align: center;">
+              <img src="{{ data.signature }}" alt="Recipient Signature" style="max-width: 100%; max-height: 150px; height: auto; border: 1px solid #ccc; border-radius: 3px;">
+            </div>
+          </div>
+        {% endif %}
       </div>
-      <form action="/received" method="POST">
+      {% if data.recipient == "No" %}
+      <form action="/collect_signature" method="POST">
         <div class="control" hidden><input id="codeinput" class="input" type="text" name="code" value={{ data.code }}></div>
+        {% if not data.notes or data.notes == "None"%}
+          <div class="field">
+            <label class="label" style="color: white">Notes (optional):</label>
+            <div class="control">
+              <textarea
+                class="textarea"
+                name="notes"
+                maxlength="255"
+                rows="2"
+                style="border: 2px solid #23d160; text-align: center;"
+                placeholder="Add notes (max 100 chars)"></textarea>
+            </div>
+          </div>
+        {% endif %}
         <button class="button is-block is-info is-medium is-fullwidth">Mark as recipient</button>
+      </form>
+      {% endif %}
+      <br>
+      <form action="/edit_beneficiary" method="GET">
+        <div class="control" hidden><input class="input" type="text" name="code" value="{{ data.code }}"></div>
+        <button class="button is-block is-warning is-medium is-fullwidth">Edit Information</button>
       </form>
       <br>
       <form action="/input" method="GET">

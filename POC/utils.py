@@ -181,7 +181,146 @@ def pandas_to_html(df, replace_values={}, replace_columns={}, titlecase=False):
     for ix, row in df.iterrows():
         row_dict = row.to_dict()
         for key in row.keys():
-            row[key] = str(row[key]).strip()
+            value = str(row[key]).strip()
+            # Handle signature data specially
+            if key.lower() == 'signature' and value.startswith('data:image'):
+                # Create a clickable button that shows the signature inline
+                code = row.get('code', ix)  # Use code if available, otherwise use index
+                value = f'''<button onclick="showSignature('{value}', '{code}')" class="button is-small is-success">✓ Signed</button>'''
+            elif key.lower() == 'signature' and (value == 'None' or value == 'nan' or not value):
+                value = "Not signed"
+            row_dict[key] = value
         rows.append(row_dict)
     print(columns, rows)
     return columns, rows
+
+
+def save_single_beneficiary(beneficiary_data, distrib_id, user_email):
+    """Save a single beneficiary record to the database with comprehensive error handling."""
+    try:
+        # Validate input parameters
+        if not beneficiary_data:
+            raise ValueError("beneficiary_data cannot be empty")
+        if not distrib_id:
+            raise ValueError("distrib_id cannot be empty")
+        if not user_email:
+            raise ValueError("user_email cannot be empty")
+        if "code" not in beneficiary_data:
+            raise ValueError("beneficiary_data must contain 'code' field")
+
+        # Create the body for the beneficiary record
+        body = {
+            "id": str(distrib_id) + str(beneficiary_data["code"]),
+            "partitionKey": user_email,
+            "distrib_id": str(distrib_id),
+        }
+
+        # Add all other fields from the beneficiary data
+        for key in beneficiary_data.keys():
+            if key not in ["id", "partitionKey", "distrib_id"]:
+                body[key] = str(beneficiary_data[key]) if beneficiary_data[key] is not None else "None"
+
+        # Determine storage mode
+        mode = os.getenv("MODE", "offline")
+        
+        if mode == "online":
+            try:
+                cosmos_container = cosmos_db.get_container_client("Beneficiaries")
+                # Save to cosmos db
+                result = cosmos_container.create_item(body=body)
+                if not result:
+                    raise Exception("Failed to create item in Cosmos DB - no result returned")
+            except Exception as e:
+                raise Exception(f"Failed to save to Cosmos DB: {str(e)}")
+                
+        elif mode == "offline":
+            try:
+                database = get_local_data_path(user_email, distrib_id)
+                
+                # Ensure the directory exists
+                os.makedirs(os.path.dirname(database), exist_ok=True)
+                
+                # Load existing data or create new DataFrame
+                if os.path.exists(database):
+                    try:
+                        existing_df = pd.read_csv(database, sep=";", dtype={"id": str}).set_index("id")
+                        # Check if beneficiary already exists
+                        if body["id"] in existing_df.index:
+                            raise ValueError(f"Beneficiary with ID {body['id']} already exists")
+                        # Add new record
+                        for key, value in body.items():
+                            existing_df.at[body["id"], key] = value
+                    except pd.errors.EmptyDataError:
+                        # File exists but is empty, create new DataFrame
+                        existing_df = pd.DataFrame([body]).set_index("id")
+                    except Exception as e:
+                        raise Exception(f"Failed to read existing data file: {str(e)}")
+                else:
+                    # Create new DataFrame with the single record
+                    existing_df = pd.DataFrame([body]).set_index("id")
+
+                # Save to CSV
+                try:
+                    existing_df.to_csv(database, sep=";")
+                    # Verify the file was written
+                    if not os.path.exists(database):
+                        raise Exception("File was not created successfully")
+                except Exception as e:
+                    raise Exception(f"Failed to write to CSV file: {str(e)}")
+                    
+            except Exception as e:
+                raise Exception(f"Failed to save to local database: {str(e)}")
+        else:
+            raise ValueError(f"Invalid MODE setting: {mode}. Must be 'online' or 'offline'")
+
+        return body["id"]
+        
+    except Exception as e:
+        # Log the error and re-raise with more context
+        import logging
+        logging.error(f"Error in save_single_beneficiary: {str(e)}")
+        raise Exception(f"Failed to save beneficiary: {str(e)}")
+
+
+def delete_single_beneficiary(beneficiary_id, user_email, distrib_id):
+    """Delete a single beneficiary record from the database."""
+    try:
+        if not beneficiary_id:
+            raise ValueError("beneficiary_id cannot be empty")
+        if not user_email:
+            raise ValueError("user_email cannot be empty")
+        if not distrib_id:
+            raise ValueError("distrib_id cannot be empty")
+
+        mode = os.getenv("MODE", "offline")
+        
+        if mode == "online":
+            try:
+                cosmos_container = cosmos_db.get_container_client("Beneficiaries")
+                cosmos_container.delete_item(item=beneficiary_id, partition_key=user_email)
+            except Exception as e:
+                raise Exception(f"Failed to delete from Cosmos DB: {str(e)}")
+                
+        elif mode == "offline":
+            try:
+                database = get_local_data_path(user_email, distrib_id)
+                if os.path.exists(database):
+                    df = pd.read_csv(database, sep=";", dtype={"id": str}).set_index("id")
+                    if beneficiary_id in df.index:
+                        df = df.drop(beneficiary_id)
+                        df.to_csv(database, sep=";")
+                    else:
+                        raise ValueError(f"Beneficiary with ID {beneficiary_id} not found")
+                else:
+                    raise ValueError("Database file does not exist")
+            except Exception as e:
+                raise Exception(f"Failed to delete from local database: {str(e)}")
+        else:
+            raise ValueError(f"Invalid MODE setting: {mode}. Must be 'online' or 'offline'")
+
+        return True
+        
+    except Exception as e:
+        import logging
+        logging.error(f"Error in delete_single_beneficiary: {str(e)}")
+        raise Exception(f"Failed to delete beneficiary: {str(e)}")

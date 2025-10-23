@@ -2,25 +2,108 @@
 
 {% block content %}
 <div class="column">
-  <div class="box">
-    <div class="columns">
-      {% for column in columns %}
-      <div class="column">
-        <label class="label is-medium">{{ column }}</label>
-      </div>
-      {% endfor %}
+  <div class="box" style="max-width: 100%; min-width: 400px;">
+    <div style="overflow-x: auto;">
+      <table class="table is-fullwidth is-striped is-bordered">
+        <thead>
+          <tr>
+            {% for column in columns %}
+            <th class="has-text-left" style="font-size:90%">{{ column }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            {% for column in columns %}
+            <td class="has-text-left" style="font-size:100%">
+              {% if column.lower() == 'signature' and 'Signed' in row[column] %}
+                {{ row[column]|safe }}
+              {% else %}
+                {{ row[column] }}
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-    {% for row in rows %}
-    <div class="columns">
-      {% for column in columns %}
-      <div class="column">
-        <label class="label is-small" style="font-size:100%">{{ row[column] }}</label>
-      </div>
-      {% endfor %}
-    </div>
-    {% endfor %}
   </div>
 </div>
+
+<!-- Signature Modal -->
+<div id="signatureModal" class="modal">
+  <div class="modal-background" onclick="closeSignatureModal()"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Digital Signature</p>
+      <button class="delete" aria-label="close" onclick="closeSignatureModal()"></button>
+    </header>
+    <section class="modal-card-body">
+      <div class="has-text-centered">
+        <p><strong>Beneficiary Code:</strong> <span id="signatureCode"></span></p>
+        <br>
+        <div style="background-color: white; padding: 20px; border-radius: 5px; border: 2px solid #dbdbdb;">
+          <img id="signatureImage" src="" alt="Recipient Signature" style="max-width: 100%; max-height: 300px; height: auto; border: 1px solid #ccc; border-radius: 3px;">
+        </div>
+      </div>
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button" onclick="closeSignatureModal()">Close</button>
+      <button class="button is-primary" onclick="printSignature()">Print</button>
+    </footer>
+  </div>
+</div>
+
+<script>
+function showSignature(signatureData, code) {
+    document.getElementById('signatureImage').src = signatureData;
+    document.getElementById('signatureCode').textContent = code;
+    document.getElementById('signatureModal').classList.add('is-active');
+}
+
+function closeSignatureModal() {
+    document.getElementById('signatureModal').classList.remove('is-active');
+}
+
+function printSignature() {
+    const signatureData = document.getElementById('signatureImage').src;
+    const code = document.getElementById('signatureCode').textContent;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Signature - ${code}</title>
+            <style>
+                body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+                img { max-width: 100%; height: auto; border: 1px solid #000; }
+                .header { margin-bottom: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>Digital Signature</h2>
+                <p><strong>Beneficiary Code:</strong> ${code}</p>
+                <p><strong>Print Date:</strong> ${new Date().toLocaleDateString()}</p>
+            </div>
+            <img src="${signatureData}" alt="Recipient Signature">
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeSignatureModal();
+    }
+});
+</script>
+
 <div class="column is-4 is-offset-4">
   <form action="/" method="GET">
     <button class="button is-block is-info is-medium is-fullwidth">Go back to main menu</button>
