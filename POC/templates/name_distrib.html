@@ -10,7 +10,7 @@
     </div>
     {% endif %}
     {% endwith %}
-          <form action="/name_distrib" method="post">
+      <form action="/create_distrib" method="post">
         <div class="field">
           <label class="label">Distribution Name</label>
           <div class="control">
@@ -18,14 +18,26 @@
           </div>
         </div>
         <div class="field">
-          <label class="label">Distribution Description</label>
+          <label class="label">Distribution Location</label>
           <div class="control">
-            <textarea class="textarea" placeholder="Distribution Description" name="distrib_description"></textarea>
+            <input class="input" type="text" placeholder="Distribution Location" name="distrib_place" required>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label">Distribution Date</label>
+          <div class="control">
+            <input class="input" type="date" name="distrib_date" required>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label">Donor</label>
+          <div class="control">
+            <input class="input" type="text" placeholder="Donor" name="distrib_donor">
           </div>
         </div>
         <div class="field is-grouped">
           <div class="control">
-            <input type="submit" class="button is-link" value="Next: Upload Data">
+            <input type="submit" class="button is-link" value="Create Distribution">
           </div>
           <div class="control">
             <a href="/" class="button is-light">Cancel</a>
